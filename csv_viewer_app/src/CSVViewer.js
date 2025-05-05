@@ -9,7 +9,7 @@ export default function CSVViewer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentUrl, setCurrentUrl] = useState('https://tuva-public-resources.s3.amazonaws.com/versioned_terminology/0.14.9/admit_source.csv_0_0_0.csv.gz');
-  const [similarFiles, setSimilarFiles] = useState([]);
+  const [terminologyFiles, setTerminologyFiles] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTerm, setFilterTerm] = useState('');
   const [pageSize, setPageSize] = useState(100);
@@ -17,11 +17,22 @@ export default function CSVViewer() {
   const [isPartialData, setIsPartialData] = useState(false);
   const [totalRowsEstimate, setTotalRowsEstimate] = useState(0);
   
-  const terminology_version = '0.14.9'; // Version number for the files
-  const baseUrl = 'https://tuva-public-resources.s3.amazonaws.com/versioned_terminology/' + terminology_version + '/';
+  const baseDomain = 'https://tuva-public-resources.s3.amazonaws.com';
+  const default_folder = 'versioned_terminology';
+  const provider_folder = 'versioned_provider_data';
+  const terminology_version = '0.14.9'; 
 
-  // Sample similar files that might exist at the same path
-  const possibleSimilarFiles = [
+  // Determine the appropriate folder based on the file name
+  const getBaseUrl = (filename) => {
+    if (filename.includes('provider')) {
+      return baseDomain + '/' + provider_folder + '/' + terminology_version + '/';
+    } else {
+      return baseDomain + '/' + default_folder + '/' + terminology_version + '/';
+    }
+  };
+
+  // List of all terminology files
+  const terminology_file_list = [
     'admit_source.csv_0_0_0.csv.gz',
     'admit_type.csv_0_0_0.csv.gz',
     'apr_drg.csv_0_0_0.csv.gz',
@@ -62,12 +73,11 @@ export default function CSVViewer() {
     'snomed_ct.csv_0_0_0.csv.gz',
     'snomed_ct_transitive_closures.csv_0_0_0.csv.gz',
     'snomed_icd_10_map.csv_0_0_0.csv.gz',
-    'terminology_seeds.csv_0_0_0.csv.gz',
   ];
 
-  // Initialize similar files
+  // Initialize terminology files
   useEffect(() => {
-    setSimilarFiles(possibleSimilarFiles);
+    setTerminologyFiles(terminology_file_list);
   }, []);
 
   const fetchAndProcessCSV = async (url) => {
@@ -78,7 +88,7 @@ export default function CSVViewer() {
       const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch data: ${response.status} ${response.statusText} (${currentUrl})`);
       }
       
       // Get the compressed data as ArrayBuffer
@@ -208,10 +218,12 @@ export default function CSVViewer() {
   }, [currentUrl]);
 
   const handleFileSelect = (filename) => {
+    // Use the appropriate base URL based on the filename
+    const baseUrl = getBaseUrl(filename);
     setCurrentUrl(`${baseUrl}${filename}`);
   };
 
-  const filteredFiles = similarFiles.filter(file => 
+  const filteredFiles = terminologyFiles.filter(file => 
     file.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
