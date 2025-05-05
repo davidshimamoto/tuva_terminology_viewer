@@ -1,0 +1,253 @@
+/* csvviewer.css */
+
+.csv-viewer-container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    padding: 16px;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .csv-viewer-title {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+    z-index: 10;
+  }
+  
+  .file-list-container {
+    width: 25%;
+    min-width: 250px;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 16px;
+    margin-right: 16px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 80px);
+    margin-top: 48px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .file-list-header {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  
+  .search-container {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 8px 8px 8px 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    width: 16px;
+    height: 16px;
+  }
+  
+  .files-list {
+    overflow-y: auto;
+    flex-grow: 1;
+  }
+  
+  .file-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin-bottom: 2px;
+  }
+  
+  .file-item:hover {
+    background-color: #e5e7eb;
+  }
+  
+  .file-item.active {
+    background-color: #dbeafe;
+  }
+  
+  .file-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    color: #3b82f6;
+  }
+  
+  .file-name {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .content-container {
+    width: 75%;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 80px);
+    margin-top: 48px;
+    overflow: hidden;
+    z-index: 1;
+  }
+  
+  .content-header {
+    padding: 16px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .file-info {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .file-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  .row-count {
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+  
+  .download-link {
+    display: flex;
+    align-items: center;
+    color: #2563eb;
+    font-size: 14px;
+    text-decoration: none;
+  }
+  
+  .download-link:hover {
+    color: #1d4ed8;
+  }
+  
+  .download-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+  }
+  
+  .content-body {
+    padding: 16px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 256px;
+  }
+  
+  .spinner {
+    width: 32px;
+    height: 32px;
+    color: #3b82f6;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .loading-text {
+    margin-top: 8px;
+    color: #6b7280;
+  }
+  
+  .error-container {
+    background-color: #fef2f2;
+    padding: 16px;
+    border-radius: 6px;
+  }
+  
+  .error-text {
+    color: #dc2626;
+  }
+  
+  .filter-container {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  
+  .table-container {
+    overflow: auto;
+    flex-grow: 1;
+  }
+  
+  table {
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: #f9fafb;
+  }
+  
+  th {
+    padding: 12px 24px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  tr:nth-child(even) {
+    background-color: #f9fafb;
+  }
+  
+  tr:nth-child(odd) {
+    background-color: white;
+  }
+  
+  td {
+    padding: 8px 24px;
+    white-space: nowrap;
+    font-size: 14px;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+  }
