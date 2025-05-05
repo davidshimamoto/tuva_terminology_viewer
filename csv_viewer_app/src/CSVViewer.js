@@ -8,15 +8,17 @@ export default function CSVViewer() {
   const [headers, setHeaders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [currentUrl, setCurrentUrl] = useState('https://tuva-public-resources.s3.amazonaws.com/versioned_terminology/0.14.9/discharge_disposition.csv_0_0_0.csv.gz');
+  const [currentUrl, setCurrentUrl] = useState('https://tuva-public-resources.s3.amazonaws.com/versioned_terminology/0.14.9/admit_source.csv_0_0_0.csv.gz');
   const [similarFiles, setSimilarFiles] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTerm, setFilterTerm] = useState('');
+  const [pageSize, setPageSize] = useState(100);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isPartialData, setIsPartialData] = useState(false);
+  const [totalRowsEstimate, setTotalRowsEstimate] = useState(0);
   
-
-  const version = '0.14.9';
-  const baseUrl = 'https://tuva-public-resources.s3.amazonaws.com/versioned_terminology/' + version + '/';
-
+  const terminology_version = '0.14.9'; // Version number for the files
+  const baseUrl = 'https://tuva-public-resources.s3.amazonaws.com/versioned_terminology/' + terminology_version + '/';
 
   // Sample similar files that might exist at the same path
   const possibleSimilarFiles = [
@@ -30,9 +32,9 @@ export default function CSVViewer() {
     'encounter_type.csv_0_0_0.csv.gz',
     'ethnicity.csv_0_0_0.csv.gz',
     'gender.csv_0_0_0.csv.gz',
-    'hchs_level_2.csv_0_0_0.csv.gz',
+    'hcpcs_level_2.csv_0_0_0.csv.gz',
     'hcpcs_to_rbcs.csv_0_0_0.csv.gz',
-    'icd_10_pcs_csm_ontology.csv_0_0_0.csv.gz',
+    'icd10_pcs_cms_ontology.csv_0_0_0.csv.gz',
     'icd_10_cm.csv_0_0_0.csv.gz',
     'icd_10_pcs.csv_0_0_0.csv.gz',
     'icd_9_cm.csv_0_0_0.csv.gz',
@@ -72,8 +74,9 @@ export default function CSVViewer() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch the gzipped file
+      // First try to fetch without range header to see if we can get headers
       const response = await fetch(url);
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
       }
@@ -81,42 +84,121 @@ export default function CSVViewer() {
       // Get the compressed data as ArrayBuffer
       const compressedData = await response.arrayBuffer();
       
-      // Decompress the data using pako
-      const decompressed = pako.inflate(new Uint8Array(compressedData));
-      
-      // Convert Uint8Array to string
-      const decoder = new TextDecoder('utf-8');
-      const csvString = decoder.decode(decompressed);
-      
-      // Parse the CSV data without headers
-      Papa.parse(csvString, {
-        header: false, // Changed to false since files don't have headers
-        dynamicTyping: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (results.data && results.data.length > 0) {
-            setCsvData(results.data);
-            
-            // Generate column placeholders based on the number of columns in the first row
-            if (results.data[0] && Array.isArray(results.data[0])) {
-              const columnCount = results.data[0].length;
-              const placeholderHeaders = Array.from({ length: columnCount }, (_, i) => `Column ${i + 1}`);
-              setHeaders(placeholderHeaders);
-            } else {
-              setError('Unable to determine column structure');
-            }
-          } else {
-            setError('No data found in the CSV file');
-          }
-          setLoading(false);
-        },
-        error: (error) => {
-          setError(`Error parsing CSV: ${error.message}`);
-          setLoading(false);
+      try {
+        // Decompress the data using pako - use try/catch since partial gzip files might break
+        const decompressed = pako.inflate(new Uint8Array(compressedData));
+        
+        // Convert Uint8Array to string
+        const decoder = new TextDecoder('utf-8');
+        const csvString = decoder.decode(decompressed);
+        
+        // Check if we got any data at all
+        if (!csvString.trim()) {
+          throw new Error("Decompressed file is empty");
         }
-      });
+        
+        // Parse the CSV data without headers
+        Papa.parse(csvString, {
+          header: false,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          preview: 1000, // Limit to first 1000 rows
+          complete: (results) => {
+            if (results.data && results.data.length > 0) {
+              setCsvData(results.data);
+              setIsPartialData(compressedData.byteLength >= 500000);
+              
+              // Generate column placeholders based on the number of columns in the first row
+              if (results.data[0] && Array.isArray(results.data[0])) {
+                const columnCount = results.data[0].length;
+                const placeholderHeaders = Array.from({ length: columnCount }, (_, i) => `Column ${i + 1}`);
+                setHeaders(placeholderHeaders);
+              } else {
+                setError('Unable to determine column structure');
+              }
+            } else {
+              setError('No rows found in the CSV file');
+            }
+            setLoading(false);
+          },
+          error: (error) => {
+            setError(`Error parsing CSV: ${error.message}`);
+            setLoading(false);
+          }
+        });
+      } catch (err) {
+        // If decompression fails, try getting a smaller chunk of the file
+        console.error("Full file decompression failed, trying with partial file", err);
+        await fetchPartialCSV(url);
+      }
     } catch (err) {
       setError(`Error: ${err.message}`);
+      setLoading(false);
+    }
+  };
+  
+  // Function to fetch just a portion of a large file
+  const fetchPartialCSV = async (url) => {
+    try {
+      // Fetch with range header to get just the start of the file
+      const response = await fetch(url, {
+        headers: {
+          'Range': 'bytes=0-150000' // Get first 150KB which should be enough for headers and some rows
+        }
+      });
+      
+      if (!response.ok && response.status !== 206) {
+        throw new Error(`Failed to fetch partial data: ${response.status} ${response.statusText}`);
+      }
+      
+      // Get the compressed data as ArrayBuffer
+      const compressedData = await response.arrayBuffer();
+      
+      try {
+        // Try to decompress, but this might fail if we cut in the middle of the gzip stream
+        const decompressed = pako.inflate(new Uint8Array(compressedData));
+        const decoder = new TextDecoder('utf-8');
+        const csvString = decoder.decode(decompressed);
+        
+        if (!csvString.trim()) {
+          throw new Error("Decompressed partial file is empty");
+        }
+        
+        // Parse the CSV data
+        Papa.parse(csvString, {
+          header: false,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            if (results.data && results.data.length > 0) {
+              setCsvData(results.data);
+              setIsPartialData(true); // We're definitely showing partial data
+              
+              // Generate column placeholders
+              if (results.data[0] && Array.isArray(results.data[0])) {
+                const columnCount = results.data[0].length;
+                const placeholderHeaders = Array.from({ length: columnCount }, (_, i) => `Column ${i + 1}`);
+                setHeaders(placeholderHeaders);
+              } else {
+                setError('Unable to determine column structure from partial data');
+              }
+            } else {
+              setError('No rows found in the partial CSV file');
+            }
+            setLoading(false);
+          },
+          error: (error) => {
+            setError(`Error parsing partial CSV: ${error.message}`);
+            setLoading(false);
+          }
+        });
+      } catch (err) {
+        // If even partial decompression fails, we need another approach
+        setError(`Unable to decompress this file format: ${err.message}`);
+        setLoading(false);
+      }
+    } catch (err) {
+      setError(`Error fetching partial data: ${err.message}`);
       setLoading(false);
     }
   };
@@ -176,7 +258,7 @@ export default function CSVViewer() {
           fontSize: '1.125rem',
           fontWeight: 600,
           marginBottom: '12px'
-        }}>Available Files - Version {version}</h2>
+        }}>Available Files - Version {terminology_version}</h2>
         
         <div style={{
           position: 'relative',
@@ -268,14 +350,17 @@ export default function CSVViewer() {
             }}>
               {getCurrentFileName()}
             </h2>
-            {!loading && !error && (
+          {!loading && !error && (
               <p style={{
                 fontSize: '14px',
                 color: '#6b7280',
                 marginTop: '4px',
                 marginBottom: 0
               }}>
-                <b>Total rows:</b> {csvData.length}, <b>Base URL:</b> <i>{baseUrl}</i> 
+                {isPartialData 
+                  ? `Showing ${csvData.length} rows (partial data)` 
+                  : `Total rows: ${csvData.length}`}
+                  , Url: {currentUrl}
               </p>
             )}
           </div>
@@ -408,6 +493,7 @@ export default function CSVViewer() {
                           cell && String(cell).toLowerCase().includes(filterTerm.toLowerCase())
                         );
                       })
+                      .slice((currentPage - 1) * pageSize, currentPage * pageSize)
                       .map((row, rowIndex) => (
                       <tr 
                         key={rowIndex}
@@ -433,6 +519,109 @@ export default function CSVViewer() {
                     ))}
                   </tbody>
                 </table>
+                
+                {/* Pagination controls */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px 0',
+                  borderTop: '1px solid #e5e7eb',
+                  marginTop: '16px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ marginRight: '8px', fontSize: '14px' }}>Rows per page:</span>
+                    <select 
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      style={{
+                        padding: '4px 8px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={250}>250</option>
+                      <option value={500}>500</option>
+                    </select>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      style={{
+                        padding: '4px 8px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        marginRight: '8px',
+                        backgroundColor: currentPage === 1 ? '#f3f4f6' : 'white',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        color: currentPage === 1 ? '#9ca3af' : '#111827'
+                      }}
+                    >
+                      Previous
+                    </button>
+                    
+                    <span style={{ margin: '0 8px', fontSize: '14px' }}>
+                      Page {currentPage} of {Math.ceil(csvData.filter(row => {
+                        if (!filterTerm) return true;
+                        return row.some(cell => 
+                          cell && String(cell).toLowerCase().includes(filterTerm.toLowerCase())
+                        );
+                      }).length / pageSize) || 1}
+                    </span>
+                    
+                    <button
+                      onClick={() => {
+                        const filteredData = csvData.filter(row => {
+                          if (!filterTerm) return true;
+                          return row.some(cell => 
+                            cell && String(cell).toLowerCase().includes(filterTerm.toLowerCase())
+                          );
+                        });
+                        const maxPage = Math.ceil(filteredData.length / pageSize) || 1;
+                        setCurrentPage(prev => Math.min(prev + 1, maxPage));
+                      }}
+                      disabled={currentPage >= Math.ceil(csvData.filter(row => {
+                        if (!filterTerm) return true;
+                        return row.some(cell => 
+                          cell && String(cell).toLowerCase().includes(filterTerm.toLowerCase())
+                        );
+                      }).length / pageSize) || 1}
+                      style={{
+                        padding: '4px 8px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        backgroundColor: currentPage >= Math.ceil(csvData.filter(row => {
+                          if (!filterTerm) return true;
+                          return row.some(cell => 
+                            cell && String(cell).toLowerCase().includes(filterTerm.toLowerCase())
+                          );
+                        }).length / pageSize) || 1 ? '#f3f4f6' : 'white',
+                        cursor: currentPage >= Math.ceil(csvData.filter(row => {
+                          if (!filterTerm) return true;
+                          return row.some(cell => 
+                            cell && String(cell).toLowerCase().includes(filterTerm.toLowerCase())
+                          );
+                        }).length / pageSize) || 1 ? 'not-allowed' : 'pointer',
+                        color: currentPage >= Math.ceil(csvData.filter(row => {
+                          if (!filterTerm) return true;
+                          return row.some(cell => 
+                            cell && String(cell).toLowerCase().includes(filterTerm.toLowerCase())
+                          );
+                        }).length / pageSize) || 1 ? '#9ca3af' : '#111827'
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               </div>
             </>
           )}
