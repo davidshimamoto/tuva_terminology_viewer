@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/tuva_terminology_viewer/static/css/main.0cd39781.css",
+    "main.js": "/tuva_terminology_viewer/static/js/main.64667262.js",
+    "static/js/453.54439ecf.chunk.js": "/tuva_terminology_viewer/static/js/453.54439ecf.chunk.js",
+    "index.html": "/tuva_terminology_viewer/index.html",
+    "main.0cd39781.css.map": "/tuva_terminology_viewer/static/css/main.0cd39781.css.map",
+    "main.64667262.js.map": "/tuva_terminology_viewer/static/js/main.64667262.js.map",
+    "453.54439ecf.chunk.js.map": "/tuva_terminology_viewer/static/js/453.54439ecf.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.0cd39781.css",
+    "static/js/main.64667262.js"
+  ]
+}
