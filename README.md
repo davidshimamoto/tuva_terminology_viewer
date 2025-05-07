@@ -2,6 +2,8 @@
 
 This is a proof-of-concept for viewing the Tuva Terminology files via a web interface. 
 
+### Version 0.1.0
+
 ### Install the `gh-pages` package.
 
 `npm install --save-dev gh-pages`
