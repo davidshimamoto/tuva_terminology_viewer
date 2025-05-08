@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Download, FileText, Loader2 } from 'lucide-react';
+import { Search, Download, FileText, Loader2, SwitchVertical } from 'lucide-react';
 import * as Papa from 'papaparse';
 import pako from 'pako';
 
@@ -16,18 +16,18 @@ export default function CSVViewer() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isPartialData, setIsPartialData] = useState(false);
   const [totalRowsEstimate, setTotalRowsEstimate] = useState(0);
+  const [terminologyVersion, setTerminologyVersion] = useState('0.14.9');
   
   const baseDomain = 'https://tuva-public-resources.s3.amazonaws.com';
   const default_folder = 'versioned_terminology';
   const provider_folder = 'versioned_provider_data';
-  const terminology_version = '0.14.9'; 
 
   // Determine the appropriate folder based on the file name
   const getBaseUrl = (filename) => {
     if (filename.includes('provider')) {
-      return baseDomain + '/' + provider_folder + '/' + terminology_version + '/';
+      return baseDomain + '/' + provider_folder + '/' + terminologyVersion + '/';
     } else {
-      return baseDomain + '/' + default_folder + '/' + terminology_version + '/';
+      return baseDomain + '/' + default_folder + '/' + terminologyVersion + '/';
     }
   };
 
@@ -110,7 +110,7 @@ export default function CSVViewer() {
         // Parse the CSV data without headers
         Papa.parse(csvString, {
           header: false,
-          dynamicTyping: true,
+          dynamicTyping: false, // Disable dynamic typing to preserve string values
           skipEmptyLines: true,
           preview: 1000, // Limit to first 1000 rows
           complete: (results) => {
@@ -177,7 +177,7 @@ export default function CSVViewer() {
         // Parse the CSV data
         Papa.parse(csvString, {
           header: false,
-          dynamicTyping: true,
+          dynamicTyping: false, // Disable dynamic typing to preserve string values
           skipEmptyLines: true,
           complete: (results) => {
             if (results.data && results.data.length > 0) {
@@ -215,7 +215,9 @@ export default function CSVViewer() {
 
   useEffect(() => {
     fetchAndProcessCSV(currentUrl);
-  }, [currentUrl]);
+    // Reset pagination when URL changes
+    setCurrentPage(1);
+  }, [currentUrl, terminologyVersion]);
 
   const handleFileSelect = (filename) => {
     // Use the appropriate base URL based on the filename
@@ -241,15 +243,74 @@ export default function CSVViewer() {
       boxSizing: 'border-box',
       overflow: 'hidden'
     }}>
-      <h1 style={{
+      <div style={{
         position: 'absolute',
         top: '16px',
         left: '16px',
-        fontSize: '1.5rem',
-        fontWeight: 'bold',
-        margin: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: 'calc(100% - 32px)',
         zIndex: 10
-      }}>Tuva Terminology Viewer</h1>
+      }}>
+        <h1 style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          margin: 0
+        }}>Tuva Terminology Viewer</h1>
+        
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '8px',
+          padding: '4px'
+        }}>
+          <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: 500 }}>Version:</span>
+          <button 
+            onClick={() => {
+              setTerminologyVersion('0.14.8');
+              // Update the current URL with the new version
+              const fileName = getCurrentFileName();
+              const baseUrl = getBaseUrl(fileName);
+              setCurrentUrl(`${baseUrl}${fileName}`);
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: terminologyVersion === '0.14.8' ? '#3b82f6' : 'transparent',
+              color: terminologyVersion === '0.14.8' ? 'white' : '#6b7280',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer'
+            }}
+          >
+            0.14.8
+          </button>
+          <button
+            onClick={() => {
+              setTerminologyVersion('0.14.9');
+              // Update the current URL with the new version
+              const fileName = getCurrentFileName();
+              const baseUrl = getBaseUrl(fileName);
+              setCurrentUrl(`${baseUrl}${fileName}`);
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: terminologyVersion === '0.14.9' ? '#3b82f6' : 'transparent',
+              color: terminologyVersion === '0.14.9' ? 'white' : '#6b7280',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer'
+            }}
+          >
+            0.14.9
+          </button>
+        </div>
+      </div>
       
       {/* Left sidebar with file list */}
       <div style={{
@@ -270,7 +331,7 @@ export default function CSVViewer() {
           fontSize: '1.125rem',
           fontWeight: 600,
           marginBottom: '12px'
-        }}>Available Files - Version {terminology_version}</h2>
+        }}>Available Files - Version {terminologyVersion}</h2>
         
         <div style={{
           position: 'relative',
@@ -640,5 +701,5 @@ export default function CSVViewer() {
         </div>
       </div>
     </div>
-  );
+  )
 }
